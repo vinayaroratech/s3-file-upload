@@ -51,6 +51,14 @@ iamRoleStatements:
 #    - exclude-me-dir/**
 
 functions:
+  listUploadedFiles:
+    handler: api/fileUpload-handler.list
+    memorySize: 128
+    description: List all uploaded files
+    events:
+      - http: 
+          path: files
+          method: get
   fileSubmission:
     handler: api/fileUpload-handler.submit
     memorySize: 128
