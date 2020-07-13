@@ -59,6 +59,14 @@ functions:
       - http: 
           path: files
           method: get
+  uploadedFileDetails:
+    handler: api/fileUpload-handler.get
+    memorySize: 128
+    description: Get uploaded file details by id
+    events:
+      - http: 
+          path: files/{id}
+          method: get
   fileSubmission:
     handler: api/fileUpload-handler.submit
     memorySize: 128

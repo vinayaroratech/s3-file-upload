@@ -67,7 +67,7 @@ const fileUploadInfo = (fullname, email, experience) => {
 module.exports.list = (event, context, callback) => {
   var params = {
     TableName: process.env.FILE_UPLOAD_TABLE,
-    ProjectionExpression: "id, fullname, email, experience, submittedAt, updatedAt"
+    ProjectionExpression: "id, fullname, experience"
   };
 
   console.log("Scanning file upload table.");
@@ -90,4 +90,29 @@ module.exports.list = (event, context, callback) => {
 
   dynamoDb.scan(params, onScan);
 
+};
+
+module.exports.get = (event, context, callback) => {
+  var params = {
+    TableName: process.env.FILE_UPLOAD_TABLE,
+    Key: {
+      id: event.pathParameters.id,
+    },
+    ProjectionExpression: "id, fullname, email, experience, submittedAt, updatedAt"
+  };
+
+  console.log("Scanning file upload table.");
+  dynamoDb.get(params).promise()
+    .then(result => {
+      const response = {
+        statusCode: 200,
+        body: JSON.stringify(result.Item),
+      };
+      callback(null, response);
+    })
+    .catch(error => {
+      console.error(error);
+      callback(new Error('Couldn\'t fetch file.'));
+      return;
+    });
 };
