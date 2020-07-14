@@ -39,7 +39,8 @@ iamRoleStatements:
       - dynamodb:Scan
       - dynamodb:GetItem
       - dynamodb:PutItem
-    Resource: "*"
+      - "s3:*"
+    Resource: "arn:aws:s3:::fileupload/*"
 
 # you can add packaging information here
 #package:
@@ -51,26 +52,10 @@ iamRoleStatements:
 #    - exclude-me-dir/**
 
 functions:
-  listUploadedFiles:
-    handler: api/fileUpload-handler.list
-    memorySize: 128
-    description: List all uploaded files
-    events:
-      - http: 
-          path: files
-          method: get
-  uploadedFileDetails:
-    handler: api/fileUpload-handler.get
-    memorySize: 128
-    description: Get uploaded file details by id
-    events:
-      - http: 
-          path: files/{id}
-          method: get
   fileSubmission:
     handler: api/fileUpload-handler.submit
     memorySize: 128
-    description: Submit candidate information and starts interview process.
+    description: Submit file information and starts uploading to S3 process.
 #    The following are a few example events you can configure
 #    NOTE: Please make sure to change your handler code to work with those events
 #    Check the event documentation for details
@@ -142,3 +127,19 @@ resources:
         StreamSpecification:
           StreamViewType: "NEW_AND_OLD_IMAGES"
         TableName: ${self:provider.environment.FILE_UPLOAD_TABLE}
+    FileUploadBucket:
+      Type: 'AWS::S3::Bucket'
+      Properties:
+        BucketName: file-protection-bucket
+        AccessControl: PublicRead
+        CorsConfiguration:
+          CorsRules:
+          - AllowedMethods:
+            - GET
+            - PUT
+            - POST
+            - HEAD
+            AllowedOrigins:
+            - "*"
+            AllowedHeaders:
+            - "*"

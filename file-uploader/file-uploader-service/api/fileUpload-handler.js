@@ -3,44 +3,79 @@
 const uuid = require('uuid');
 const AWS = require('aws-sdk');
 AWS.config.setPromisesDependency(require('bluebird'));
+const s3 = new AWS.S3();
+let mime = require('mime-types')
 
 const dynamoDb = new AWS.DynamoDB.DocumentClient();
 
-module.exports.submit = (event, context, callback) => {
-  const requestBody = JSON.parse(event.body);
-  const fullname = requestBody.fullname;
-  const email = requestBody.email;
-  const experience = requestBody.experience;
+module.exports.submit = async (event, context, callback) => {
+  console.log("Request received");
 
-  if (typeof fullname !== 'string' || typeof email !== 'string' || typeof experience !== 'number') {
-    console.error('Validation Failed');
-    callback(new Error('Couldn\'t upload file because of validation errors.'));
-    return;
-  }
+  // Extract file content
+  let fileContent = event.isBase64Encoded ? Buffer.from(event.body, 'base64') : event.body;
 
+  // Generate file name from current timestamp
+  let fileName = `${Date.now()}`;
+  try {
+    // Determine file extension
+    let contentType = event.headers['content-type'] || event.headers['Content-Type'];
 
-  submitFileUploadP(fileUploadInfo(fullname, email, experience))
-    .then(res => {
-      callback(null, {
-        statusCode: 200,
-        body: JSON.stringify({
-          message: `Sucessfully submitted file with email ${email}`,
-          fileId: res.id
-        })
-      });
-    })
-    .catch(err => {
-      console.log(err);
-      callback(null, {
-        statusCode: 500,
-        body: JSON.stringify({
-          message: `Unable to submit file with email ${email}`,
-          Error: err
-        })
+    let extension = contentType ? mime.extension(contentType) : '';
+
+    let fullFileName = extension ? `${fileName}.${extension}` : fileName;
+
+    const pin = 1234;
+
+    let response = {
+      statusCode: Number,
+      body: String
+    };
+
+    submitFileUploadP(fileUploadInfo(fileName, extension, pin))
+      .then(res => {
+        response = {
+          statusCode: 200,
+          body: JSON.stringify({
+            message: `Sucessfully submitted file with name ${fileName}`,
+            fileId: res.id
+          })
+        };
       })
-    });
+      .catch(err => {
+        console.log(err);
+        response = {
+          statusCode: 500,
+          body: JSON.stringify({
+            message: `Unable to submit file with name ${fileName}`,
+            Error: err
+          })
+        };
+      });
+
+    await uploadFileToS3(fullFileName, fileContent);
+
+    callback(null, response);
+
+  } catch (err) {
+    console.log("Failed to upload file", fullFileName, err);
+    callback(new Error('Couldn\'t upload file.'));
+  };
+
 };
 
+
+const uploadFileToS3 = async (fullFileName, fileContent) => {
+  console.log("Submitting the file to S3", fullFileName);
+
+  let data = await s3.putObject({
+    Bucket: "file-protection-bucket",
+    Key: fullFileName,
+    Body: fileContent,
+    Metadata: {}
+  }).promise();
+
+  console.log("Successfully uploaded file", fullFileName);
+}
 
 const submitFileUploadP = file => {
   console.log('Submitting file');
@@ -52,67 +87,14 @@ const submitFileUploadP = file => {
     .then(res => file);
 };
 
-const fileUploadInfo = (fullname, email, experience) => {
+const fileUploadInfo = (fileName, fileExtention, pin) => {
   const timestamp = new Date().getTime();
   return {
     id: uuid.v1(),
-    fullname: fullname,
-    email: email,
-    experience: experience,
+    fileName: fileName,
+    fileExtention: fileExtention,
+    pin: pin,
     submittedAt: timestamp,
     updatedAt: timestamp,
   };
-};
-
-module.exports.list = (event, context, callback) => {
-  var params = {
-    TableName: process.env.FILE_UPLOAD_TABLE,
-    ProjectionExpression: "id, fullname, experience"
-  };
-
-  console.log("Scanning file upload table.");
-  const onScan = (err, data) => {
-
-    if (err) {
-      console.log('Scan failed to load data. Error JSON:', JSON.stringify(err, null, 2));
-      callback(err);
-    } else {
-      console.log("Scan succeeded.");
-      return callback(null, {
-        statusCode: 200,
-        body: JSON.stringify({
-          files: data.Items
-        })
-      });
-    }
-
-  };
-
-  dynamoDb.scan(params, onScan);
-
-};
-
-module.exports.get = (event, context, callback) => {
-  var params = {
-    TableName: process.env.FILE_UPLOAD_TABLE,
-    Key: {
-      id: event.pathParameters.id,
-    },
-    ProjectionExpression: "id, fullname, email, experience, submittedAt, updatedAt"
-  };
-
-  console.log("Scanning file upload table.");
-  dynamoDb.get(params).promise()
-    .then(result => {
-      const response = {
-        statusCode: 200,
-        body: JSON.stringify(result.Item),
-      };
-      callback(null, response);
-    })
-    .catch(error => {
-      console.error(error);
-      callback(new Error('Couldn\'t fetch file.'));
-      return;
-    });
 };
