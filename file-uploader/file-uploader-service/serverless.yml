@@ -29,7 +29,7 @@ provider:
   region: us-east-1
   # you can define service wide environment variables here
   environment:
-    FILE_UPLOAD_TABLE: ${self:service}-${opt:stage, self:provider.stage}
+    FILE_UPLOAD_TABLE: file-protect-table-${opt:stage, self:provider.stage}
   
 # you can add statements to the Lambda function's IAM Role here
 iamRoleStatements:
@@ -52,8 +52,16 @@ iamRoleStatements:
 #    - exclude-me-dir/**
 
 functions:
-  fileSubmission:
-    handler: api/fileUpload-handler.submit
+  fileDownload:
+    handler: api/file-download-handler.submit
+    memorySize: 128
+    description: Download the file base64 string from S3 bucket.
+    events:
+      - http:
+          path: file/download
+          method: get
+  fileUpload:
+    handler: api/file-upload-handler.submit
     memorySize: 128
     description: Submit file information and starts uploading to S3 process.
 #    The following are a few example events you can configure
@@ -115,11 +123,11 @@ resources:
       Properties:
         AttributeDefinitions:
           -
-            AttributeName: "id"
+            AttributeName: "securecode"
             AttributeType: "S"   
         KeySchema:
           -
-            AttributeName: "id"
+            AttributeName: "securecode"
             KeyType: "HASH"
         ProvisionedThroughput:
           ReadCapacityUnits: 1
@@ -131,7 +139,7 @@ resources:
       Type: 'AWS::S3::Bucket'
       Properties:
         BucketName: file-protection-bucket
-        AccessControl: PublicRead
+        AccessControl: PublicReadWrite
         CorsConfiguration:
           CorsRules:
           - AllowedMethods:
