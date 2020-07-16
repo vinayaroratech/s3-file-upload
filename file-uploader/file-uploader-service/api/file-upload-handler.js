@@ -38,7 +38,7 @@ module.exports.submit = async (event, context, callback) => {
   };
 
   try {
-    submitFileUploadP(fileUploadInfo(result.file.filename, fullFileName, extension, pin))
+    submitFileUploadP(fileUploadInfo(result.file.filename, fullFileName, contentType, pin))
       .then(res => {
         response = {
           statusCode: 200,
@@ -94,13 +94,14 @@ const submitFileUploadP = file => {
     .then(res => file);
 };
 
-const fileUploadInfo = (fileName, generatedFilename, fileExtention, pin) => {
+const fileUploadInfo = (fileName, generatedFilename, contentType, pin) => {
   const timestamp = moment().format('MM/DD/YYYY HH:MM:SS');
   return {
     SecureCode: pin,
     OriginalFileName: fileName,
     GeneratedFileName: generatedFilename,
     ProtectedFileName: '',
+    MimeType: contentType,
     SubmittedAt: timestamp,
     UpdatedAt: timestamp,
   };
