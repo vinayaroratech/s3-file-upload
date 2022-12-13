@@ -4,7 +4,7 @@
   "description": "Handling file uploads in aws s3 with nodejs, expres, multer, lambda, api-gateway",
   "dependencies": {
     "body-parser": "^1.15.2",
-    "express": "^4.14.0",
+    "express": "^4.17.3",
     "multer": "^1.2.0"
   },
   "main": "server.js",
